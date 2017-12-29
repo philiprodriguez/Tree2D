@@ -4,22 +4,22 @@ import java.util.Random;
 
 public class Tree2DTester {
     public static void main(String[] args) throws InterruptedException {
-        /*Tree2D<String> tree = new Tree2D<String>();
-        tree.put(new Point2D(30, 40), "a");
-        tree.put(new Point2D(5, 25), "b");
-        tree.put(new Point2D(10, 12), "c");
-        tree.put(new Point2D(70, 70), "d");
-        tree.put(new Point2D(40, 100), "e");
-        tree.put(new Point2D(50, 30), "f");
-        tree.put(new Point2D(35, 45), "g");
-        tree.put(new Point2D(8, 256), "h");
+        Tree2D<Integer> tree = new Tree2D<Integer>();
+        tree.put(new Point2D(30, 40), 1);
+        tree.put(new Point2D(5, 25), 2);
+        tree.put(new Point2D(10, 12), 3);
+        tree.put(new Point2D(70, 70), 4);
+        tree.put(new Point2D(40, 100), 5);
+        tree.put(new Point2D(50, 30), 6);
+        tree.put(new Point2D(35, 45), 7);
+        tree.put(new Point2D(8, 256), 8);
 
         //Test reinserting same point...
-        tree.put(new Point2D(50, 30), "i");
+        tree.put(new Point2D(50, 30), 9);
 
         //Test inserting things that will compare on equal components when points are unequal...
-        tree.put(new Point2D(50, 35), "j");
-        tree.put(new Point2D(45, 70), "k");
+        tree.put(new Point2D(50, 35), 10);
+        tree.put(new Point2D(45, 70), 11);
 
         System.out.println(tree.toString());
         System.out.println(tree.size());
@@ -40,8 +40,19 @@ public class Tree2DTester {
         tree.remove(new Point2D(70, 70));
 
         System.out.println(tree.size());
-        System.out.println(tree.toString());*/
+        System.out.println(tree.toString());
 
+        //Range query
+
+        System.out.println(tree.get2DRange(new Point2D(5, 25), new Point2D(45, 70)));
+
+
+
+
+        /*
+            This little section is for infinite automated testing... it'll go till it breaks!
+         */
+        /*
         int test = 0;
         Random r = new Random();
         while(automatedTesting(r.nextInt(100000), -100000000, 100000000, null)) {
@@ -50,10 +61,32 @@ public class Tree2DTester {
             System.out.println("Running test " + test);
             Thread.sleep(10);
         }
+        */
 
-        //automatedTesting(5, -1000, 1000, new Point2D[]{new Point2D(-651.8314f, 616.93713f), new Point2D(-73.53784f, -947.04047f), new Point2D(-479.102f, -490.92816f), new Point2D(-938.8059f, 338.5298f), new Point2D(-17.453064f, 28.254639f)});
+        doTheInsertionAndQuery(tree, 50000000);
 
 
+    }
+
+    public static void doTheInsertionAndQuery(Tree2D<Integer> tree, int numInsertions)
+    {
+        Random r = new Random();
+        System.out.println("Inserting " + numInsertions + " points...");
+        long start = System.currentTimeMillis();
+        for(int i = 0; i < numInsertions; i++)
+        {
+            Point2D point = new Point2D(-1000+(r.nextFloat()*2000), -1000+(r.nextFloat()*2000));
+            //System.out.println("Inserting point " + i + "; " + point);
+            tree.put(point, r.nextInt());
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("Tree size is " + tree.size());
+        System.out.println("Insertion took " + (end-start) + "ms, or " + (((end-start)*1000)/(double)numInsertions) + "microseconds per insertion.");
+        ArrayList<Point2DPair<Integer>> results = tree.get2DRange(new Point2D(5, 25), new Point2D(45, 70));
+        start = System.currentTimeMillis();
+        System.out.println("Range query found " + results.size() + " results.");
+        end = System.currentTimeMillis();
+        System.out.println("Range query took " + (end-start) + "ms.");
     }
 
     /*

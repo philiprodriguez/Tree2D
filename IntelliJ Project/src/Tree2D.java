@@ -15,7 +15,6 @@ public class Tree2D<DataType> {
     public static final float eps = 0.000001f;
 
     private volatile Tree2DNode<DataType> rootNode;
-    private final Object treeLock;
 
     private volatile long size;
     private final Object sizeLock;
@@ -28,7 +27,6 @@ public class Tree2D<DataType> {
         rootNode = null;
         size = 0;
         sizeLock = new Object();
-        treeLock = new Object();
     }
 
     /*
@@ -78,46 +76,34 @@ public class Tree2D<DataType> {
     /*
         Find or insert node with key and put at that node the data value.
      */
-    public void put(Point2D key, DataType value)
+    public synchronized void put(Point2D key, DataType value)
     {
-        if (isEmpty())
-        {
+        if (isEmpty()) {
             rootNode = new Tree2DNode<DataType>(key, value);
             incrementSize();
-        }
-        else
-        {
+        } else {
             //Find info on our node...
             NodePair<DataType> nodePair = findNodeRec(null, rootNode, key, 0);
 
-            if (nodePair.getNode() != null)
-            {
+            if (nodePair.getNode() != null) {
                 //The node already existed in the tree and we found it...
                 nodePair.getNode().setData(value);
-            }
-            else
-            {
+            } else {
                 //No such node exists in the tree yet... but we got the parent of where the new node belongs...
                 //Note depth-1 since depth-1 is the depth of the parent node!
                 int comparison;
-                if ((nodePair.getDepth()-1) % 2 == 0)
-                {
+                if ((nodePair.getDepth() - 1) % 2 == 0) {
                     //Compare X
                     comparison = key.compareX(nodePair.getParentNode().getPoint());
-                }
-                else
-                {
+                } else {
                     //Compare Y
                     comparison = key.compareY(nodePair.getParentNode().getPoint());
                 }
 
-                if (comparison < 0)
-                {
+                if (comparison < 0) {
                     //Go left
                     nodePair.getParentNode().setLeft(new Tree2DNode<DataType>(key, value));
-                }
-                else
-                {
+                } else {
                     //Go right
                     nodePair.getParentNode().setRight(new Tree2DNode<DataType>(key, value));
                 }
@@ -129,7 +115,7 @@ public class Tree2D<DataType> {
     /*
         Remove node with this key!
      */
-    public void remove(Point2D key)
+    public synchronized void remove(Point2D key)
     {
         removeNode(null, rootNode, key, 0);
     }
@@ -292,7 +278,7 @@ public class Tree2D<DataType> {
     /*
         Get the data at key and return it, or null if no node exists with key.
      */
-    public DataType get(Point2D key)
+    public synchronized DataType get(Point2D key)
     {
         NodePair<DataType> nodePair = findNodeRec(null, rootNode, key, 0);
         if (nodePair.getNode() != null)
@@ -359,15 +345,79 @@ public class Tree2D<DataType> {
     /*
         Get all points (and data) in the range of the given from and to points.
      */
-    public ArrayList<Point2DPair> get2DRange(Point2D from, Point2D to)
+    public synchronized ArrayList<Point2DPair<DataType>> get2DRange(Point2D from, Point2D to)
     {
-        throw new IllegalStateException("Not yet implemented!");
+        float minX = Math.min(from.x, to.x);
+        float maxX = Math.max(from.x, to.x);
+        float minY = Math.min(from.y, to.y);
+        float maxY = Math.max(from.y, to.y);
+
+        return collectRange(rootNode, 0, minX, maxX, minY, maxY);
+    }
+
+    /*
+        TODO: update with use of epsilon? Is that even necessary?
+     */
+    /*
+        This method recursively finds all nodes in the tree rooted at [curNode] that have key points that are withing
+        the passed in minimums and maximums of each dimension.
+     */
+    private ArrayList<Point2DPair<DataType>> collectRange(Tree2DNode<DataType> curNode, int depth, float minX, float maxX, float minY, float maxY)
+    {
+        if (curNode == null)
+            return new ArrayList<>();
+
+        ArrayList<Point2DPair<DataType>> returning = new ArrayList<>();
+
+        //Am I in range?
+        if (curNode.getPoint().x <= maxX && curNode.getPoint().x >= minX && curNode.getPoint().y <= maxY && curNode.getPoint().y >= minY)
+        {
+            //Yup
+            returning.add(curNode.getPoint2DPair());
+        }
+
+        float min;
+        float max;
+        float splitDim;
+        if (depth % 2 == 0)
+        {
+            //Splitting dimension is X
+            splitDim = curNode.getPoint().x;
+            min = minX;
+            max = maxX;
+        }
+        else
+        {
+            //Splitting dimension is Y
+            splitDim = curNode.getPoint().y;
+            min = minY;
+            max = maxY;
+        }
+
+        if (splitDim > max)
+        {
+            //exceeds the range, so just go left
+            returning.addAll(collectRange(curNode.getLeft(), depth+1, minX, maxX, minY, maxY));
+        }
+        else if (splitDim < min)
+        {
+            //preceeds the range, so just go right
+            returning.addAll(collectRange(curNode.getRight(), depth+1, minX, maxX, minY, maxY));
+        }
+        else
+        {
+            //in range, so must go both ways.
+            returning.addAll(collectRange(curNode.getLeft(), depth+1, minX, maxX, minY, maxY));
+            returning.addAll(collectRange(curNode.getRight(), depth+1, minX, maxX, minY, maxY));
+        }
+
+        return returning;
     }
 
     /*
         Returns an ArrayList containing all keys and values in nice Point2DPair format.
      */
-    public ArrayList<Point2DPair> getAll()
+    public synchronized ArrayList<Point2DPair> getAll()
     {
         ArrayList<Point2DPair> all = new ArrayList<>();
         populateAll(rootNode, all);
@@ -391,7 +441,7 @@ public class Tree2D<DataType> {
     /*
         Return a text treeview using spaces.
      */
-    public String toString()
+    public synchronized String toString()
     {
         StringBuilder sb = new StringBuilder();
         stringTreeRec(rootNode, 0, sb);
@@ -485,7 +535,7 @@ public class Tree2D<DataType> {
             return point;
         }
 
-        private synchronized Point2DPair getPoint2DPair()
+        private synchronized Point2DPair<DataType> getPoint2DPair()
         {
             return new Point2DPair<DataType>(getPoint(), getData());
         }
@@ -511,7 +561,7 @@ public class Tree2D<DataType> {
             }
         }
 
-        public String toString()
+        public synchronized String toString()
         {
             return "[" + getPoint().toString() + ", " + getData().toString() + "]";
         }
